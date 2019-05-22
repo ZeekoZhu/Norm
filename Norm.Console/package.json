@@ -1,0 +1,11 @@
+{
+  "name": "norm-console",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "cli-highlight": "^2.1.1",
+    "get-stdin": "^7.0.0",
+    "sql-formatter": "^2.3.2"
+  }
+}

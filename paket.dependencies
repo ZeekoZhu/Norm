@@ -1,0 +1,22 @@
+version 5.206.0
+storage: none
+source https://api.nuget.org/v3/index.json
+framework: netstandard2.0, netcoreapp2.2
+nuget FSharp.Core
+
+group Test
+    storage: none
+    source https://api.nuget.org/v3/index.json
+    framework: netstandard2.0, netcoreapp2.2
+    nuget xunit
+    nuget xunit.runner.visualstudio
+    nuget FluentAssertions
+    nuget Dapper
+// [ FAKE GROUP ]
+group Build
+    storage: none
+    framework: netstandard2.0
+    source https://api.nuget.org/v3/index.json
+    source https://www.myget.org/F/zeekoget/api/v3/index.json
+    nuget Fake.DotNet.Cli
+    nuget MyFakeTools ~> 0.0.14
