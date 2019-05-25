@@ -112,6 +112,10 @@ and compileBinary (ctx: CompilerContext) (bin: BinaryOperatorExpression) =
     compile ctx bin.Right
     ``write()`` Right ctx
     
+and compileOptionClause ctx clause =
+    match clause with
+    | Some clause -> compile ctx clause
+    | _ -> ()
 
 and compileSelectStatement (ctx: CompilerContext) (stmt: SelectStatement) =
     if stmt.Ctes.Count > 0 then
@@ -119,21 +123,20 @@ and compileSelectStatement (ctx: CompilerContext) (stmt: SelectStatement) =
     compile ctx stmt.Select
     write " " ctx
     compile ctx stmt.From
-    let compileOptionClause clause =
-        match clause with
-        | Some clause -> compile ctx clause
-        | _ -> ()
         
-    compileOptionClause stmt.Where
-    compileOptionClause stmt.Group
-    compileOptionClause stmt.Having
-    compileOptionClause stmt.Order
-    compileOptionClause stmt.Pagiantion
+    compileOptionClause ctx stmt.Where
+    compileOptionClause ctx stmt.Group
+    compileOptionClause ctx stmt.Having
+    compileOptionClause ctx stmt.Order
+    compileOptionClause ctx stmt.Pagiantion
 
 and compileStatement ctx (stmt: SqlStatement) =
     match stmt with
     | :? SelectStatement as selectStmt -> compileSelectStatement ctx selectStmt
+    | :? UpdateStatement as x -> compileUpdate ctx x
+    | :? DeleteStatement as x -> compileDelete ctx x
     | _ -> failwith "Not supported yet!"
+    write ";" ctx
 
 and compileConstant (ctx: CompilerContext) (constExpr: ConstantExpression) =
     if constExpr.IsString then
@@ -189,6 +192,22 @@ and compilePagination ctx (paging: PaginationClause) =
     write (paging.PerPage.ToString()) ctx
     write " OFFSET " ctx
     write ((paging.PerPage * (paging.Index - 1)).ToString()) ctx
+
+and compileAssignment ctx (assignment: AssignmentExpression) =
+    compile ctx assignment.Left
+    write " = " ctx
+    compile ctx assignment.Right.Unwarp
+and compileUpdate ctx (update: UpdateStatement) =
+    write "UPDATE " ctx
+    compile ctx update.Table
+    write " SET " ctx
+    writeArray ", " compile update.Mutations ctx
+    compileOptionClause ctx update.Where
+
+and compileDelete ctx (delete: DeleteStatement) =
+    write "DELETE " ctx
+    compile ctx delete.Table
+    compileOptionClause ctx delete.Where
 
 and compile (ctx: CompilerContext) (expr: SqlExpression) =
     match expr with
