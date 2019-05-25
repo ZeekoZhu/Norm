@@ -6,7 +6,9 @@ type SpecialConstants() =
     member val IdentifierLeft = "["
     member val IdentifierRight = "]"
     member val MemberAccessor = "."
-    member val KeyWordAs = "AS"
+    member val True = "TRUE"
+    member val False = "FALSE"
+    member val StringQuote = "'"
 
 let consts = SpecialConstants()
 type CompilerContext(buffer: StringBuilder) =
@@ -48,9 +50,7 @@ let rec compileAlias (ctx: CompilerContext) (alias: AliasExpression) =
     ``write()`` Left ctx
     compile ctx alias.Origin
     ``write()`` Right ctx
-    writeSpace ctx
-    write ctx.Constants.KeyWordAs ctx
-    writeSpace ctx
+    write " AS " ctx
     alias.Alias |> compile ctx
 
 and compileMemberAccess ctx (expr: MemberAccessExpression) =
@@ -58,36 +58,34 @@ and compileMemberAccess ctx (expr: MemberAccessExpression) =
     write "." ctx
     compile ctx expr.Child
     ()
-and compileIdentifier (ctx: CompilerContext) (identifier: IdentifierExpression) =
-    match identifier with
-    | :? MemberAccessExpression as x -> compileMemberAccess ctx x
-    | _ ->
+and compileDbObject ctx (expr: TableOrColumnExpression) =
         ``write[]`` Left ctx
-        write identifier.Name ctx
+        write expr.Name ctx
         ``write[]`` Right ctx
 
-and compileSelectOperand (ctx: CompilerContext) (operand: SelectOperand) =
+and compileColumnsOperand (ctx: CompilerContext) (operand: ColumnsOperand) =
     match operand with
-    | Identifier x -> compile ctx x
-    | IdAlias x -> compile ctx x
+    | ColumnsOperand.Identifier x -> compile ctx x
+    | ColumnsOperand.Alias x -> compile ctx x
     | ComputeAlias x -> compile ctx x
 
 and compileSelectClause (ctx: CompilerContext) (select: SelectClause) =
     write "SELECT " ctx
-    writeArray ", " compileSelectOperand select.Columns ctx
+    writeArray ", " compileColumnsOperand select.Columns ctx
 
-and compileDataSet ctx dataSet =
-    match dataSet with
-    | SubQuery x -> compile ctx x
-    | Join x -> compile ctx x
-    | TableAlias x -> compile ctx x
-    | Table x -> compile ctx x
+and compileDataSet ctx (dataSet: DataSet) =
+    compile ctx dataSet.UnwrapDataSet
 
 and compileFromClause (ctx: CompilerContext) (from: FromClause) =
     write "FROM " ctx
     compileDataSet ctx from.DataSet
     write " " ctx
 
+and compileWhereClause (ctx: CompilerContext) (where: WhereClause) =
+    write "WHERE " ctx
+    match where.Condition with
+    | WhereCondition.Boolean x -> compile ctx x
+    | WhereCondition.Predicate x -> compile ctx x
 
 and compileJoin (ctx: CompilerContext) (join: JoinExpression) =
     compileDataSet ctx join.Left
@@ -116,24 +114,100 @@ and compileBinary (ctx: CompilerContext) (bin: BinaryOperatorExpression) =
     
 
 and compileSelectStatement (ctx: CompilerContext) (stmt: SelectStatement) =
+    if stmt.Ctes.Count > 0 then
+        writeArray ", " compile (stmt.Ctes.ToArray()) ctx 
     compile ctx stmt.Select
     write " " ctx
     compile ctx stmt.From
-    ()
+    let compileOptionClause clause =
+        match clause with
+        | Some clause -> compile ctx clause
+        | _ -> ()
+        
+    compileOptionClause stmt.Where
+    compileOptionClause stmt.Group
+    compileOptionClause stmt.Having
+    compileOptionClause stmt.Order
+    compileOptionClause stmt.Pagiantion
 
 and compileStatement ctx (stmt: SqlStatement) =
     match stmt with
     | :? SelectStatement as selectStmt -> compileSelectStatement ctx selectStmt
     | _ -> failwith "Not supported yet!"
-    
+
+and compileConstant (ctx: CompilerContext) (constExpr: ConstantExpression) =
+    if constExpr.IsString then
+        write (ctx.Constants.StringQuote) ctx
+        write (constExpr.Value) ctx
+        write (ctx.Constants.StringQuote) ctx
+    else 
+        write (constExpr.Value) ctx
+
+and compileParameter ctx (param: ParameterExpression) =
+    write "@" ctx
+    write (param.Name) ctx
+
+and compileGroupBy ctx (groupBy: GroupClause) =
+    write "GROUP BY " ctx
+    writeArray ", " compileColumnsOperand groupBy.Columns ctx
+
+and compileHaving ctx (having: HavingClause) =
+    write "HAVING " ctx
+    match having.Condition with
+    | WhereCondition.Boolean x -> compile ctx x
+    | WhereCondition.Predicate x -> compile ctx x
+
+and compileOrderBy ctx (orderBy: OrderClause) =
+    write "ORDER BY " ctx
+    writeArray ", " compileColumnsOperand orderBy.Columns ctx
+
+and compileWithCte ctx (cte: WithClause) =
+    write "WITH " ctx
+    compile ctx cte.CteName
+    write " AS (" ctx
+    compile ctx cte.Select
+    write ")" ctx
+
+and compileInvokeParam ctx (param: ValueParameter) =
+    compile ctx param.Unwarp
+
+and compileInvoke ctx (invoke: InvokeExpression) =
+    write invoke.Name ctx
+    ``write()`` Left ctx
+    writeArray ", " compileInvokeParam invoke.Params ctx
+    ``write()`` Right ctx
+
+and compileBetween ctx (between: BetweenExpression) =
+    compile ctx between.Operand.Unwarp
+    write " BETWEEN " ctx
+    compile ctx between.From.Unwarp
+    write " AND " ctx
+    compile ctx between.To.Unwarp
+
+and compilePagination ctx (paging: PaginationClause) =
+    write "LIMIT " ctx
+    write (paging.PerPage.ToString()) ctx
+    write " OFFSET " ctx
+    write ((paging.PerPage * (paging.Index - 1)).ToString()) ctx
 
 and compile (ctx: CompilerContext) (expr: SqlExpression) =
     match expr with
     | :? SqlStatement as stmt -> compileStatement ctx stmt
     | :? AliasExpression as x -> compileAlias ctx x
-    | :? IdentifierExpression as x -> compileIdentifier ctx x
     | :? SelectClause as x -> compileSelectClause ctx x
     | :? FromClause as x -> compileFromClause ctx x
+    | :? WhereClause as x -> compileWhereClause ctx x
+    | :? GroupClause as x -> compileGroupBy ctx x
+    | :? HavingClause as x -> compileHaving ctx x
+    | :? OrderClause as x -> compileOrderBy ctx x
+    | :? WithClause as x -> compileWithCte ctx x
     | :? JoinExpression as x -> compileJoin ctx x
     | :? BinaryOperatorExpression as x -> compileBinary ctx x
-    | _ -> failwith "Not supported yet!"
+    | :? MemberAccessExpression as x -> compileMemberAccess ctx x
+    | :? TableOrColumnExpression as x -> compileDbObject ctx x
+    | :? ConstantExpression as x -> compileConstant ctx x
+    | :? ParameterExpression as x -> compileParameter ctx x
+    | :? InvokeExpression as x -> compileInvoke ctx x
+    | :? BetweenExpression as x -> compileBetween ctx x
+    | :? PaginationClause as x -> compilePagination ctx x
+    | _ -> failwithf "%s: Not supported yet!" (expr.GetType().Name)
