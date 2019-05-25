@@ -116,12 +116,12 @@ module BuildingBlock =
     [<AbstractClass>]
     type SqlStatement() =
         inherit SqlExpression()
+        member val Where: WhereClause option = None with get, set
 
-    type SelectStatement(from: FromClause, select: SelectClause) =
+    and SelectStatement(from: FromClause, select: SelectClause) =
         inherit SqlStatement()
         member val From = from with get, set
         member val Select = select with get, set
-        member val Where: WhereClause option = None with get, set
         member val Group: GroupClause option = None with get, set
         member val Having: HavingClause option = None with get, set
         member val Order: OrderClause option = None with get, set

@@ -74,7 +74,7 @@ let NotIN (range: ParameterExpression) left =
 let NotINQuery (query: SelectStatement) left =
     NotInRangeExpression(left, query)
 
-let where (expr: SqlExpression) (query: SelectStatement) =
+let where (expr: SqlExpression) (query: SqlStatement) =
     let condition =
         InternalBuilder.condition expr
     query.Where <- Some (WhereClause condition)
@@ -131,3 +131,9 @@ let withCte cteSubQuery cteName (query: SelectStatement) =
 let paging index perPage (query: SelectStatement) =
     query.Pagiantion <- Some (PaginationClause(index, perPage))
     query
+
+let set col value =
+    AssignmentExpression(col, value |> InternalBuilder.valueExpr)
+let update table mutations = UpdateStatement(table, mutations)
+
+let delete table columns = DeleteStatement(table, columns)

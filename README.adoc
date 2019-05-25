@@ -7,8 +7,8 @@ Norm is not ORM, it is just a SQL query builder.
 * [x] Select Statement
 ** [x] CTE
 ** [x] SubQueries
-* [ ] Update Statement
-* [ ] Delete Statement
+* [x] Update Statement
+* [x] Delete Statement
 * [ ] OO Query Builder
 * [ ] Functional Query Builder
 * Dialects
