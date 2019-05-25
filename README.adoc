@@ -1,0 +1,22 @@
+= Norm
+
+Norm is not ORM, it is just a SQL query builder.
+
+== Features
+
+* [x] Select Statement
+** [x] CTE
+** [x] SubQueries
+* [ ] Update Statement
+* [ ] Delete Statement
+* [ ] OO Query Builder
+* [ ] Functional Query Builder
+* Dialects
+** [x] Standard
+** [ ] SQL Server
+*** [ ] 2008
+*** [ ] 2008+
+** [ ] MySQL
+** [ ] Oracle
+** [ ] SQLite
+** [ ] PostgreSQL
