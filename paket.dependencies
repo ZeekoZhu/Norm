@@ -3,6 +3,7 @@ storage: none
 source https://api.nuget.org/v3/index.json
 framework: netstandard2.0, netcoreapp2.2
 nuget FSharp.Core
+nuget utf8json
 
 group Test
     storage: none

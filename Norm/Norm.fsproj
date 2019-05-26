@@ -9,6 +9,7 @@
     <Compile Include="Builder.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Compiler\CompilerContext.fs" />
     <Compile Include="Compiler\DefaultCompiler.fs" />
     <Compile Include="Compiler\BaseCompiler.fs" />
     <Compile Include="Compiler\SqlServerCompiler.fs" />

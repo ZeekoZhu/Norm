@@ -4,7 +4,7 @@ open Norm.BuildingBlock
 let table name = TableOrColumnExpression name
 let column name = TableOrColumnExpression name
 
-let dot table column = BinaryOperatorExpression(".", table, column, false)
+let dot column table = BinaryOperatorExpression(".", table, column, false)
 
 let NullSelect = SelectClause([||])
 module internal InternalBuilder =
@@ -136,3 +136,16 @@ let set col value =
 let update table mutations = UpdateStatement(table, mutations)
 
 let delete table columns = DeleteStatement(table, columns)
+
+type BuilderContext =
+    { mutable ParamSeq: int
+    }
+    member this.Param value =
+        this.ParamSeq <- this.ParamSeq + 1
+        let paramName = sprintf "p%i" this.ParamSeq
+        ParameterExpression(paramName, value)
+
+let createBuilderCtx () =
+    { ParamSeq = 0 }
+
+

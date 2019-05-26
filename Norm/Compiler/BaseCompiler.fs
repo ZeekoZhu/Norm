@@ -18,7 +18,6 @@ type BaseCompiler() =
         | :? UpdateStatement as x -> this.CompileUpdateStatement(ctx, x)
         | :? DeleteStatement as x -> this.CompileDeleteStatement(ctx, x)
         | _ -> failwith "Not supported yet!"
-        write ";" ctx
 
     member this.CompileAlias(ctx, x) =
         compileAlias ctx x

@@ -1,15 +1,8 @@
 module Norm.Compiler.DefaultCompiler
 open System.Text
 open Norm.BuildingBlock
+type CSList<'t> = System.Collections.Generic.List<'t>
 
-type SpecialConstants =
-    { IdentifierLeft: string
-      IdentifierRight: string
-      MemberAccessor: string
-      True: string
-      False: string
-      StringQuote: string
-    }
 
 let defaultConstants =
     { IdentifierLeft = "["
@@ -21,19 +14,13 @@ let defaultConstants =
     }
 
 let consts = defaultConstants
-type OnCompileExpression = CompilerContext * SqlExpression -> bool
-and CompilerContext =
-    { Buffer: StringBuilder
-      Constants: SpecialConstants
-      OnCompileExpression: OnCompileExpression option
-      mutable ExtraContext: obj option
-    }
 let createDefaultContext () =
     {
         Buffer = StringBuilder()
         Constants = consts
         OnCompileExpression = None
         ExtraContext = None
+        Paramneters = CSList<_>()
     }
 
 module Buffer =
@@ -174,6 +161,7 @@ and compileConstant (ctx: CompilerContext) (constExpr: ConstantExpression) =
         write (constExpr.Value) ctx
 
 and compileParameter ctx (param: ParameterExpression) =
+    ctx.Paramneters.Add(param)
     write "@" ctx
     write (param.Name) ctx
 
