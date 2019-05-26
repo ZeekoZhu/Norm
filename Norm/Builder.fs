@@ -74,7 +74,7 @@ let NotIN (range: ParameterExpression) left =
 let NotINQuery (query: SelectStatement) left =
     NotInRangeExpression(left, query)
 
-let where (expr: SqlExpression) (query: SqlStatement) =
+let where<'t when 't :> SqlStatement> (expr: SqlExpression) (query: 't) =
     let condition =
         InternalBuilder.condition expr
     query.Where <- Some (WhereClause condition)
@@ -107,13 +107,12 @@ let having expr (query: SelectStatement) =
     query.Having <- Some (HavingClause condition)
     query
 
-let orderBy columns (query: SelectStatement) =
-    let clause =
+let orderBy columns desc (query: SelectStatement) =
+    let columns =
         columns
         |> Seq.map (InternalBuilder.selectColumn)
         |> Array.ofSeq
-        |> OrderClause
-    query.Order <- Some clause
+    query.Order <- Some (OrderClause(columns, desc))
     query
 
 let dbFn name values =

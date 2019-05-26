@@ -10,6 +10,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compiler\DefaultCompiler.fs" />
+    <Compile Include="Compiler\BaseCompiler.fs" />
+    <Compile Include="Compiler\SqlServerCompiler.fs" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

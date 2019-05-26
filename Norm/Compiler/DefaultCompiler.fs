@@ -2,43 +2,64 @@ module Norm.Compiler.DefaultCompiler
 open System.Text
 open Norm.BuildingBlock
 
-type SpecialConstants() =
-    member val IdentifierLeft = "["
-    member val IdentifierRight = "]"
-    member val MemberAccessor = "."
-    member val True = "TRUE"
-    member val False = "FALSE"
-    member val StringQuote = "'"
+type SpecialConstants =
+    { IdentifierLeft: string
+      IdentifierRight: string
+      MemberAccessor: string
+      True: string
+      False: string
+      StringQuote: string
+    }
 
-let consts = SpecialConstants()
-type CompilerContext(buffer: StringBuilder) =
-    member val Constants = consts
-    member val Buffer = buffer
+let defaultConstants =
+    { IdentifierLeft = "["
+      IdentifierRight = "]"
+      MemberAccessor = "."
+      True = "TRUE"
+      False = "FALSE"
+      StringQuote = "'"
+    }
+
+let consts = defaultConstants
+type OnCompileExpression = CompilerContext * SqlExpression -> bool
+and CompilerContext =
+    { Buffer: StringBuilder
+      Constants: SpecialConstants
+      OnCompileExpression: OnCompileExpression option
+      mutable ExtraContext: obj option
+    }
+let createDefaultContext () =
+    {
+        Buffer = StringBuilder()
+        Constants = consts
+        OnCompileExpression = None
+        ExtraContext = None
+    }
 
 module Buffer =
     type PairedSide =
         | Left
         | Right
-    
+
     let writePaired (left: string) (right: string) (side: PairedSide) (ctx: CompilerContext) =
         match side with
         | Left -> left
         | Right -> right
         |> ctx.Buffer.Append
         |> ignore
-    
+
     let ``write()`` = writePaired "(" ")"
-    
-    
+
+
     let write (str: string) (ctx: CompilerContext) = ctx.Buffer.Append str |> ignore
     let writeSpace ctx = write " " ctx
     let ``write[]`` ctx = writePaired consts.IdentifierLeft consts.IdentifierRight ctx
     let writeArray (div: string) (writeEle: _ -> 'a -> unit) (array: 'a []) ctx =
         match array with
         | [||] -> ()
-        | [|a|] -> writeEle ctx a
+        | [| a |] -> writeEle ctx a
         | _ ->
-            for i in 0 .. array.Length - 2 do
+            for i in 0..array.Length - 2 do
                 let ele = array.[i]
                 writeEle ctx ele
                 write div ctx
@@ -53,6 +74,8 @@ let rec compileAlias (ctx: CompilerContext) (alias: AliasExpression) =
     write " AS " ctx
     alias.Alias |> compile ctx
 
+and compileAllColumns ctx (_: AllColumnsExpression) =
+    write "*" ctx
 and compileMemberAccess ctx (expr: MemberAccessExpression) =
     compile ctx expr.Parent
     write "." ctx
@@ -90,7 +113,7 @@ and compileWhereClause (ctx: CompilerContext) (where: WhereClause) =
 and compileJoin (ctx: CompilerContext) (join: JoinExpression) =
     compileDataSet ctx join.Left
     write " " ctx
-    let joinType = 
+    let joinType =
         match join.Type with
         | JoinType.Left -> "LEFT JOIN"
         | JoinType.Right -> "RIGHT JOIN"
@@ -102,7 +125,7 @@ and compileJoin (ctx: CompilerContext) (join: JoinExpression) =
     compileDataSet ctx join.Right
     write " ON " ctx
     compile ctx join.On
-    
+
 and compileBinary (ctx: CompilerContext) (bin: BinaryOperatorExpression) =
     ``write()`` Left ctx
     compile ctx bin.Left
@@ -111,7 +134,7 @@ and compileBinary (ctx: CompilerContext) (bin: BinaryOperatorExpression) =
     write " " ctx
     compile ctx bin.Right
     ``write()`` Right ctx
-    
+
 and compileOptionClause ctx clause =
     match clause with
     | Some clause -> compile ctx clause
@@ -119,15 +142,20 @@ and compileOptionClause ctx clause =
 
 and compileSelectStatement (ctx: CompilerContext) (stmt: SelectStatement) =
     if stmt.Ctes.Count > 0 then
-        writeArray ", " compile (stmt.Ctes.ToArray()) ctx 
+        writeArray ", " compile (stmt.Ctes.ToArray()) ctx
     compile ctx stmt.Select
     write " " ctx
     compile ctx stmt.From
-        
+    write " " ctx
+
     compileOptionClause ctx stmt.Where
+    write " " ctx
     compileOptionClause ctx stmt.Group
+    write " " ctx
     compileOptionClause ctx stmt.Having
+    write " " ctx
     compileOptionClause ctx stmt.Order
+    write " " ctx
     compileOptionClause ctx stmt.Pagiantion
 
 and compileStatement ctx (stmt: SqlStatement) =
@@ -136,14 +164,13 @@ and compileStatement ctx (stmt: SqlStatement) =
     | :? UpdateStatement as x -> compileUpdate ctx x
     | :? DeleteStatement as x -> compileDelete ctx x
     | _ -> failwith "Not supported yet!"
-    write ";" ctx
 
 and compileConstant (ctx: CompilerContext) (constExpr: ConstantExpression) =
     if constExpr.IsString then
         write (ctx.Constants.StringQuote) ctx
         write (constExpr.Value) ctx
         write (ctx.Constants.StringQuote) ctx
-    else 
+    else
         write (constExpr.Value) ctx
 
 and compileParameter ctx (param: ParameterExpression) =
@@ -163,6 +190,8 @@ and compileHaving ctx (having: HavingClause) =
 and compileOrderBy ctx (orderBy: OrderClause) =
     write "ORDER BY " ctx
     writeArray ", " compileColumnsOperand orderBy.Columns ctx
+    if orderBy.Descending then
+        write " DESC" ctx
 
 and compileWithCte ctx (cte: WithClause) =
     write "WITH " ctx
@@ -210,23 +239,30 @@ and compileDelete ctx (delete: DeleteStatement) =
     compileOptionClause ctx delete.Where
 
 and compile (ctx: CompilerContext) (expr: SqlExpression) =
-    match expr with
-    | :? SqlStatement as stmt -> compileStatement ctx stmt
-    | :? AliasExpression as x -> compileAlias ctx x
-    | :? SelectClause as x -> compileSelectClause ctx x
-    | :? FromClause as x -> compileFromClause ctx x
-    | :? WhereClause as x -> compileWhereClause ctx x
-    | :? GroupClause as x -> compileGroupBy ctx x
-    | :? HavingClause as x -> compileHaving ctx x
-    | :? OrderClause as x -> compileOrderBy ctx x
-    | :? WithClause as x -> compileWithCte ctx x
-    | :? JoinExpression as x -> compileJoin ctx x
-    | :? BinaryOperatorExpression as x -> compileBinary ctx x
-    | :? MemberAccessExpression as x -> compileMemberAccess ctx x
-    | :? TableOrColumnExpression as x -> compileDbObject ctx x
-    | :? ConstantExpression as x -> compileConstant ctx x
-    | :? ParameterExpression as x -> compileParameter ctx x
-    | :? InvokeExpression as x -> compileInvoke ctx x
-    | :? BetweenExpression as x -> compileBetween ctx x
-    | :? PaginationClause as x -> compilePagination ctx x
-    | _ -> failwithf "%s: Not supported yet!" (expr.GetType().Name)
+    let preventDefault =
+        match ctx.OnCompileExpression with
+        | None -> false
+        | Some handler -> handler (ctx, expr)
+    if preventDefault then ()
+    else 
+        match expr with
+        | :? SqlStatement as stmt -> compileStatement ctx stmt
+        | :? AliasExpression as x -> compileAlias ctx x
+        | :? SelectClause as x -> compileSelectClause ctx x
+        | :? FromClause as x -> compileFromClause ctx x
+        | :? WhereClause as x -> compileWhereClause ctx x
+        | :? GroupClause as x -> compileGroupBy ctx x
+        | :? HavingClause as x -> compileHaving ctx x
+        | :? OrderClause as x -> compileOrderBy ctx x
+        | :? WithClause as x -> compileWithCte ctx x
+        | :? JoinExpression as x -> compileJoin ctx x
+        | :? BinaryOperatorExpression as x -> compileBinary ctx x
+        | :? MemberAccessExpression as x -> compileMemberAccess ctx x
+        | :? AllColumnsExpression as x -> compileAllColumns ctx x
+        | :? TableOrColumnExpression as x -> compileDbObject ctx x
+        | :? ConstantExpression as x -> compileConstant ctx x
+        | :? ParameterExpression as x -> compileParameter ctx x
+        | :? InvokeExpression as x -> compileInvoke ctx x
+        | :? BetweenExpression as x -> compileBetween ctx x
+        | :? PaginationClause as x -> compilePagination ctx x
+        | _ -> failwithf "%s: Not supported yet!" (expr.GetType().Name)

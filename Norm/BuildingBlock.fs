@@ -1,10 +1,15 @@
 namespace Norm
+open System.Text
 
 type CSList<'t> = System.Collections.Generic.List<'t>
 
 module BuildingBlock =
     [<AbstractClass>]
     type SqlExpression() = class end
+    
+    type RawSqlExpression (fn: (StringBuilder -> unit)) =
+        inherit SqlExpression()
+        member val Fn = fn with get, set
 
     type ConstantExpression(value: string, isString: bool) =
         inherit SqlExpression()
@@ -61,6 +66,9 @@ module BuildingBlock =
     /// Table name or Column name
     type TableOrColumnExpression(name: string) =
         inherit IdentifierExpression(name)
+    
+    type AllColumnsExpression() =
+        inherit IdentifierExpression("*")
 
     type MemberAccessExpression(parent: IdentifierExpression, child: IdentifierExpression) =
         inherit IdentifierExpression(parent.Name + "." + child.Name)
@@ -108,9 +116,10 @@ module BuildingBlock =
         inherit SqlExpression()
         member val Columns = exprs with get, set
 
-    type OrderClause(exprs: ColumnsOperand []) =
+    type OrderClause(exprs: ColumnsOperand [], descending: bool) =
         inherit SqlExpression()
         member val Columns = exprs with get, set
+        member val Descending = descending with get, set
 
 
     [<AbstractClass>]
@@ -174,6 +183,10 @@ module BuildingBlock =
     and WhereCondition =
         | Boolean of ConstantExpression
         | Predicate of OperatorExpression
+        member this.UnWarp =
+            match this with
+            | Boolean x -> x :> SqlExpression
+            | Predicate x -> x :> SqlExpression
     and WhereClause(predicate: WhereCondition) =
         inherit SqlExpression()
         member val Condition = predicate with get, set
