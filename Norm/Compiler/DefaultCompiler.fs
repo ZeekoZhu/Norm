@@ -219,11 +219,16 @@ and compileUpdate ctx (update: UpdateStatement) =
     compile ctx update.Table
     write " SET " ctx
     writeArray ", " compile update.Mutations ctx
+    compileOptionClause ctx update.From
+    write " " ctx
     compileOptionClause ctx update.Where
 
 and compileDelete ctx (delete: DeleteStatement) =
     write "DELETE " ctx
     compile ctx delete.Table
+    write " " ctx
+    compileOptionClause ctx delete.From
+    write " " ctx
     compileOptionClause ctx delete.Where
 
 and compile (ctx: CompilerContext) (expr: SqlExpression) =

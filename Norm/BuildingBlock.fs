@@ -1,15 +1,10 @@
 namespace Norm
-open System.Text
 
 type CSList<'t> = System.Collections.Generic.List<'t>
 
 module BuildingBlock =
     [<AbstractClass>]
     type SqlExpression() = class end
-    
-    type RawSqlExpression (fn: (StringBuilder -> unit)) =
-        inherit SqlExpression()
-        member val Fn = fn with get, set
 
     type ConstantExpression(value: string, isString: bool) =
         inherit SqlExpression()
@@ -213,10 +208,12 @@ module BuildingBlock =
         member val Table = table with get, set
         member val Mutations = mutations with get, set
         member val Where: WhereClause option = None with get, set
+        member val From: FromClause option = None with get, set
 
     type DeleteStatement(table: TableOrColumnExpression, columns: TableOrColumnExpression []) =
         inherit SqlStatement()
         member val Table = table with get, set
         member val Columns = columns with get, set
         member val Where: WhereClause option = None with get, set
+        member val From: FromClause option = None with get, set
 
