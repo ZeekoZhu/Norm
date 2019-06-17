@@ -129,7 +129,7 @@ module BuildingBlock =
         member val Group: GroupClause option = None with get, set
         member val Having: HavingClause option = None with get, set
         member val Order: OrderClause option = None with get, set
-        member val Ctes: CSList<WithClause> = new CSList<WithClause>()
+        member val Ctes: WithClause option = None with get, set
         member val Pagiantion: PaginationClause option = None with get, set
 
     and JoinType =
@@ -189,10 +189,13 @@ module BuildingBlock =
         inherit SqlExpression()
         member val Condition = predicate with get, set
 
-    and WithClause(cteName: IdentifierExpression, selectStmt: SelectStatement) =
+    and CteExpression(cteName: IdentifierExpression, selectStmt: SelectStatement) =
         inherit SqlExpression()
         member val CteName = cteName with get, set
         member val Select = selectStmt with get, set
+    and WithClause(ctes: CSList<CteExpression>) =
+        inherit SqlExpression()
+        member val Tables = ctes with get, set
 
     and PaginationClause(index: int, perPage: int) =
         inherit SqlExpression()

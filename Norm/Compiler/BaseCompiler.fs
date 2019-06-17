@@ -38,7 +38,7 @@ type BaseCompiler() =
     member this.CompileOrderBy(ctx, x) =
         compileOrderBy ctx x
     member this.CompileWithCte(ctx, x) =
-        compileWithCte ctx x
+        compileWithClause ctx x
     member this.CompileJoin(ctx, x) =
         compileJoin ctx x
     member this.CompileBinary(ctx, x) =

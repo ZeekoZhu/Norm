@@ -122,9 +122,14 @@ let dbFn name values =
     InvokeExpression(name, parameters)
 
 let withCte cteSubQuery cteName (query: SelectStatement) =
-    let withClause =
-        WithClause((table cteName), cteSubQuery)
-    query.Ctes.Add withClause
+    let cte = CteExpression(table cteName, cteSubQuery)
+    match query.Ctes with
+    | Some x ->
+        x.Tables.Add(cte)
+    | None ->
+        let clause = WithClause(CSList())
+        clause.Tables.Add(cte)
+        query.Ctes <- Some clause
     query
     
 let paging index perPage (query: SelectStatement) =

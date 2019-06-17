@@ -128,8 +128,10 @@ and compileOptionClause ctx clause =
     | _ -> ()
 
 and compileSelectStatement (ctx: CompilerContext) (stmt: SelectStatement) =
-    if stmt.Ctes.Count > 0 then
-        writeArray ", " compile (stmt.Ctes.ToArray()) ctx
+    match stmt.Ctes with
+    | Some x when x.Tables.Count > 0 ->
+        compile ctx x
+    | _ -> ()
     compile ctx stmt.Select
     write " " ctx
     compile ctx stmt.From
@@ -181,12 +183,15 @@ and compileOrderBy ctx (orderBy: OrderClause) =
     if orderBy.Descending then
         write " DESC" ctx
 
-and compileWithCte ctx (cte: WithClause) =
-    write "WITH " ctx
+and compileCte ctx (cte: CteExpression) =
     compile ctx cte.CteName
     write " AS (" ctx
     compile ctx cte.Select
     write ")" ctx
+    
+and compileWithClause ctx (cte: WithClause) =
+    write "WITH " ctx
+    writeArray ", " compileCte (cte.Tables.ToArray()) ctx
 
 and compileInvokeParam ctx (param: ValueParameter) =
     compile ctx param.Unwarp
@@ -247,7 +252,7 @@ and compile (ctx: CompilerContext) (expr: SqlExpression) =
         | :? GroupClause as x -> compileGroupBy ctx x
         | :? HavingClause as x -> compileHaving ctx x
         | :? OrderClause as x -> compileOrderBy ctx x
-        | :? WithClause as x -> compileWithCte ctx x
+        | :? WithClause as x -> compileWithClause ctx x
         | :? JoinExpression as x -> compileJoin ctx x
         | :? BinaryOperatorExpression as x -> compileBinary ctx x
         | :? MemberAccessExpression as x -> compileMemberAccess ctx x
