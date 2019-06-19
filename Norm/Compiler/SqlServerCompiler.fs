@@ -20,26 +20,24 @@ type SqlServerContext =
       mutable GeneratedCte: Stack<CteExpression>
     }
 
-type RowNumberExpression(orderBy: OrderClause, index:int, perPage: int) =
+type RowNumberExpression(orderBy: OrderClause) =
     inherit SqlExpression()
     member val OrderBy = orderBy with get, set
-    member val Index = index with get, set
-    member val PerPage = perPage with get, set
 
 let compileRowNumber (ctx: CompilerContext) (rownumber: RowNumberExpression) =
     write "ROW_NUMBER() OVER( " ctx
     compileOrderBy ctx rownumber.OrderBy
     write " )" ctx
 
-let onCompilePagination ctx (pagination: PaginationClause) (opt: SqlServerCompilerOptions) =
+let onCompileLimit ctx (limit: LimitClause) (opt: SqlServerCompilerOptions) =
     if opt.UseRowNumberForPaging then
         true
     else
-        let offset = (pagination.Index - 1) * pagination.PerPage
+        let offset = limit.Offset
         write "OFFSET " ctx
         write (offset.ToString()) ctx
         write " ROWS FETCH NEXT " ctx
-        write (pagination.PerPage.ToString()) ctx
+        write (limit.Limit.ToString()) ctx
         write " ROWS ONLY" ctx
         true
 
@@ -67,8 +65,8 @@ let getCurrentRowNumberWrapper (ctx: CompilerContext) =
 ///     SELECT Foo.Bar, Foo.Baa
 /// to
 ///     SELECT Foo.Bar, Foo.Baa, __RowNumber_1
-let convertToSelectRowNumber (select: SelectClause) orderBy (pagination: PaginationClause) (ctx: CompilerContext) =
-    let rowNumber = RowNumberExpression(orderBy, pagination.Index, pagination.PerPage)
+let convertToSelectRowNumber (select: SelectClause) orderBy (limit: LimitClause) (ctx: CompilerContext) =
+    let rowNumber = RowNumberExpression(orderBy)
     let rowNumber = alias rowNumber (getCurrentRowNumberColumn ctx)
     let cols = Array.append select.Columns [|rowNumber |> ColumnsOperand.Identifier |]
     let newSelect = SelectClause(cols)
@@ -94,13 +92,13 @@ let simplifySelectClause (select: SelectClause) =
     |> Array.map removeColumnAccessor
     |> SelectClause
 
-/// Convert pagination to
+/// Convert limit to
 /// WHERE __RowNumber_1 between @__RowNumber_1_from and @__RowNumber_1_to
-let convertToWhereRowNumber (pagination: PaginationClause) (ctx: CompilerContext) =
+let convertToWhereRowNumber (limit: LimitClause) (ctx: CompilerContext) =
     let rowNumberCol = getCurrentRowNumberColumn ctx |> TableOrColumnExpression
     let rowNumberCol = rowNumberCol :> IdentifierExpression |> Identifier
-    let fromValue = ParameterExpression((getCurrentRowNumberFrom ctx),((pagination.Index - 1) * pagination.PerPage + 1)) |> Param
-    let toValue = ParameterExpression((getCurrentRowNumberTo ctx), pagination.PerPage * pagination.Index) |> Param
+    let fromValue = ParameterExpression((getCurrentRowNumberFrom ctx), limit.Offset) |> Param
+    let toValue = ParameterExpression((getCurrentRowNumberTo ctx), limit.Offset + limit.Limit) |> Param
     let betweenCondition =
         BetweenExpression(rowNumberCol, fromValue, toValue)
     WhereClause(betweenCondition :> OperatorExpression |> Predicate)
@@ -116,12 +114,12 @@ let convertToWhereRowNumber (pagination: PaginationClause) (ctx: CompilerContext
 /// WHERE [__RowNumber_1] BETWEEN [..] AND [..]
 let convertToRowNumberCTESelectStmt (stmt: SelectStatement) (ctx: CompilerContext) =
     useRowNumber ctx
-    let selectInCte = convertToSelectRowNumber stmt.Select stmt.Order.Value stmt.Pagiantion.Value ctx
+    let selectInCte = convertToSelectRowNumber stmt.Select stmt.Order.Value stmt.Limit.Value ctx
     let resultSelect = simplifySelectClause stmt.Select
     stmt.Select <- selectInCte
     let wrapperTable = table (getCurrentRowNumberWrapper ctx)
-    let wrapperWhere = convertToWhereRowNumber stmt.Pagiantion.Value ctx
-    stmt.Pagiantion <- None
+    let wrapperWhere = convertToWhereRowNumber stmt.Limit.Value ctx
+    stmt.Limit <- None
     stmt.Order <- None
     let ctes = CSList()
     if stmt.Ctes.IsSome then
@@ -158,9 +156,11 @@ let onCompileSelectStatement
     | Some _ -> ()
     if compilerOpt.UseRowNumberForPaging then
         let stmt =
-            if stmt.Pagiantion.IsSome then
+            if stmt.Limit.IsSome then
                 match stmt.Order with
-                | None -> failwith "Query with pagination must have ORDER BY clause"
+                | None ->
+                    stmt.Order <- Some (OrderClause (stmt.Select.Columns.[0..0], false))
+                    stmt
                 | Some _ ->
                     let newStmt = convertToRowNumberCTESelectStmt stmt ctx
                     newStmt
@@ -190,8 +190,8 @@ let onCompileExpression: SqlServerCompilerOptions -> OnCompileExpression =
         match expr with
         | :? SelectStatement as x ->
             onCompileSelectStatement ctx x opt
-        | :? PaginationClause as x ->
-            onCompilePagination ctx x opt
+        | :? LimitClause as x ->
+            onCompileLimit ctx x opt
         | :? RowNumberExpression as x ->
             compileRowNumber ctx x
             true

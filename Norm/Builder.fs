@@ -133,7 +133,7 @@ let withCte cteSubQuery cteName (query: SelectStatement) =
     query
     
 let paging index perPage (query: SelectStatement) =
-    query.Pagiantion <- Some (PaginationClause(index, perPage))
+    query.Limit <- Some (LimitClause(index, perPage))
     query
 
 let set col value =

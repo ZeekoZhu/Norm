@@ -130,7 +130,7 @@ module BuildingBlock =
         member val Having: HavingClause option = None with get, set
         member val Order: OrderClause option = None with get, set
         member val Ctes: WithClause option = None with get, set
-        member val Pagiantion: PaginationClause option = None with get, set
+        member val Limit: LimitClause option = None with get, set
 
     and JoinType =
         | Inner
@@ -197,10 +197,10 @@ module BuildingBlock =
         inherit SqlExpression()
         member val Tables = ctes with get, set
 
-    and PaginationClause(index: int, perPage: int) =
+    and LimitClause(limit: int, offset: int) =
         inherit SqlExpression()
-        member val Index = index with get, set
-        member val PerPage = perPage with get, set
+        member val Limit = limit with get, set
+        member val Offset = offset with get, set
 
     type AssignmentExpression(left: TableOrColumnExpression, right: ValueParameter) =
         inherit SqlExpression()

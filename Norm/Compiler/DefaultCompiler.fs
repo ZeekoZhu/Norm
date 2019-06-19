@@ -145,7 +145,7 @@ and compileSelectStatement (ctx: CompilerContext) (stmt: SelectStatement) =
     write " " ctx
     compileOptionClause ctx stmt.Order
     write " " ctx
-    compileOptionClause ctx stmt.Pagiantion
+    compileOptionClause ctx stmt.Limit
 
 and compileStatement ctx (stmt: SqlStatement) =
     match stmt with
@@ -209,11 +209,11 @@ and compileBetween ctx (between: BetweenExpression) =
     write " AND " ctx
     compile ctx between.To.Unwarp
 
-and compilePagination ctx (paging: PaginationClause) =
+and compileLimit ctx (limit: LimitClause) =
     write "LIMIT " ctx
-    write (paging.PerPage.ToString()) ctx
+    write (limit.Offset.ToString()) ctx
     write " OFFSET " ctx
-    write ((paging.PerPage * (paging.Index - 1)).ToString()) ctx
+    write ((limit.Offset).ToString()) ctx
 
 and compileAssignment ctx (assignment: AssignmentExpression) =
     compile ctx assignment.Left
@@ -262,5 +262,5 @@ and compile (ctx: CompilerContext) (expr: SqlExpression) =
         | :? ParameterExpression as x -> compileParameter ctx x
         | :? InvokeExpression as x -> compileInvoke ctx x
         | :? BetweenExpression as x -> compileBetween ctx x
-        | :? PaginationClause as x -> compilePagination ctx x
+        | :? LimitClause as x -> compileLimit ctx x
         | _ -> failwithf "%s: Not supported yet!" (expr.GetType().Name)

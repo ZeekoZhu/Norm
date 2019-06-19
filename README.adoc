@@ -7,12 +7,12 @@ Norm is not ORM, it is just a SQL query builder.
 * [x] Select Statement
 ** [x] CTE
 ** [x] SubQueries
+** [x] Limit ... Offset
 * [x] Update Statement
 * [x] Delete Statement
 * [ ] OO Query Builder
 * [ ] Functional Query Builder
 * Dialects
-** [x] Standard
 ** [ ] SQL Server
 *** [ ] 2008
 *** [ ] 2008+
@@ -20,3 +20,53 @@ Norm is not ORM, it is just a SQL query builder.
 ** [ ] Oracle
 ** [ ] SQLite
 ** [ ] PostgreSQL
+
+== Dialects
+
+=== SELECT
+
+=== LIMIT Clause
+
+==== Standard
+
+[source, sql]
+----
+SELECT ...columns FROM table
+ORDER BY col1
+OFFSET @offset
+FETCH FIRST @limit ROWS ONLY
+----
+
+==== MS SQL 2008
+
+[source, sql]
+----
+WITH [__RowNumberWrapper_1] AS (
+    SELECT ...columns, (ROW_NUMBER() OVER (ORDER BY (col1))) AS [__RowNumber_1]
+    FROM table
+    ORDER BY col1
+)
+SELECT ...columns
+FROM [__RowNumberWrapper_1]
+WHERE [__RowNumber_1] BETWEEN @offset AND (@offset + @limit)
+----
+
+==== MS SQL 2012+
+
+[source, sql]
+----
+SELECT ...columns FROM table
+ORDER BY col1
+OFFSET @offset
+FETCH NEXT @limit ROWS ONLY
+----
+
+==== PostgreSQL
+
+[source, sql]
+----
+SELECT ...columns FROM table
+ORDER BY col1
+LIMIT @limit OFFSET @offset
+----
+

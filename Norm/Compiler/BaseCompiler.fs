@@ -56,7 +56,7 @@ type BaseCompiler() =
     member this.CompileBetween(ctx, x) =
         compileBetween ctx x
     member this.CompilePagination(ctx, x) =
-        compilePagination ctx x
+        compileLimit ctx x
     member this.Compile (ctx: CompilerContext) (expr: SqlExpression) =
         match expr with
         | :? SqlStatement as stmt -> this.CompileStatement(ctx, stmt)
@@ -76,5 +76,5 @@ type BaseCompiler() =
         | :? ParameterExpression as x -> this.CompileParameter(ctx, x)
         | :? InvokeExpression as x -> this.CompileInvoke(ctx, x)
         | :? BetweenExpression as x -> this.CompileBetween(ctx, x)
-        | :? PaginationClause as x -> this.CompilePagination(ctx, x)
+        | :? LimitClause as x -> this.CompilePagination(ctx, x)
         | _ -> failwithf "%s: Not supported yet!" (expr.GetType().Name)
