@@ -14,18 +14,18 @@ let main argv =
     let comment = table "blog_Comment"
     let postCol = columnOf blogPost
     let commentCol = columnOf comment
-    let joined = leftJoin blogPost comment (equals (postCol "Id") (commentCol "ParentId"))
+    let joined = leftJoin blogPost comment (equalTo (postCol "Id") (commentCol "ParentId"))
     let cteQuery =
         query joined
         |> select [ postCol("Id"); (alias (commentCol "Id") "CommentId") ]
-        |> where ((postCol("IsActive") |> equals trueValue) |> AND (postCol("Id") |> IN idRange))
+        |> where ((postCol("IsActive") |> equalTo trueValue) |> andAlso (postCol("Id") |> isOneOf idRange))
         |> groupBy [postCol "BlogId";]
-        |> having ((dbFn "sum" [| (postCol "PostId") |]) |> equals postIdCount)
+        |> having ((dbFn "sum" [| (postCol "PostId") |]) |> equalTo postIdCount)
         |> orderBy [postCol "BlogId";] true
-        |> paging 2 15
+        |> limitResult 2 15
     let blogIdCte = table "BlogId"
     let fakeQuery =
-        query (leftJoin comment blogIdCte ((commentCol "BlogId") |> equals (columnOf blogIdCte "Id")))
+        query (leftJoin comment blogIdCte ((commentCol "BlogId") |> equalTo (columnOf blogIdCte "Id")))
         |> withCte cteQuery "BlogId"
         |> select [commentCol "Id"]
     compile msSql2008 fakeQuery

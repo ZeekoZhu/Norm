@@ -37,6 +37,9 @@ module internal InternalBuilder =
         | :? AliasExpression<OperatorExpression> as x -> ColumnsOperand.ComputeAlias x
         | :? IdentifierExpression as x -> ColumnsOperand.Identifier x
         | _ -> failwith "Invalid expression in 'SELECT' clause"
+    
+    let binaryOp literal right left =
+        BinaryOperatorExpression(literal, left, right, true)
 
 let query from = SelectStatement((InternalBuilder.from from), NullSelect)
 let join _type left right on =
@@ -51,28 +54,24 @@ let crossJoin left right on = join JoinType.Cross left right on
 let alias origin name =
     AliasExpression(origin, TableOrColumnExpression(name)) :> IdentifierExpression
 
-let equals right left =
-    EqualsExpression(left, right)
+let equalTo right left = InternalBuilder.binaryOp " = " right left
+let notEqualTo right left= InternalBuilder.binaryOp " <> " right left
+let gt right left = InternalBuilder.binaryOp " > " right left
+let lt right left = InternalBuilder.binaryOp " < " right left
+let gte right left = InternalBuilder.binaryOp " >= " right left
+let lte right left = InternalBuilder.binaryOp " <= " right left
+let like right left = InternalBuilder.binaryOp " LIKE " right left
+let isOneOf right left = InternalBuilder.binaryOp " IN " right left
+let isNotOneOf right left = InternalBuilder.binaryOp " NOT IN " right left
+let isNull right left = InternalBuilder.binaryOp " IS NULL " right left
+let isNotNull right left = InternalBuilder.binaryOp " IS NOT NULL " right left
+let andAlso right left = InternalBuilder.binaryOp " AND " right left
+let orElse right left = InternalBuilder.binaryOp " OR " right left
+
 
 let trueValue = TrueExpression()
 let falseValue = FalseExpression()
-
-let AND right left =
-    AndAlsoExpression(left, right)
-let OR right left =
-    OrElseExpression(left, right)
-
-let IN (range: ParameterExpression) left =
-    InRangeExpression(left, range)
-
-let INQuery (query: SelectStatement) left =
-    InRangeExpression(left, query)
-
-let NotIN (range: ParameterExpression) left =
-    NotInRangeExpression(left, range)
-
-let NotINQuery (query: SelectStatement) left =
-    NotInRangeExpression(left, query)
+let nullValue = NullExpression()
 
 let where<'t when 't :> SqlStatement> (expr: SqlExpression) (query: 't) =
     let condition =
@@ -132,8 +131,8 @@ let withCte cteSubQuery cteName (query: SelectStatement) =
         query.Ctes <- Some clause
     query
     
-let paging index perPage (query: SelectStatement) =
-    query.Limit <- Some (LimitClause(index, perPage))
+let limitResult limit offset (query: SelectStatement) =
+    query.Limit <- Some (LimitClause(limit, offset))
     query
 
 let set col value =
