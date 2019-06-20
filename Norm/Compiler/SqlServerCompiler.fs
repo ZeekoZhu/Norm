@@ -8,8 +8,8 @@ open Norm.Builder
 
 let defaultConstants =
     { Norm.Compiler.DefaultCompiler.defaultConstants with
-          True = "1 = 1"
-          False = "1 = 0"
+          IdentifierLeft = "["
+          IdentifierRight = "]"
     }
 
 type SqlServerCompilerOptions =
@@ -41,6 +41,14 @@ let onCompileLimit ctx (limit: LimitClause) (opt: SqlServerCompilerOptions) =
         write " ROWS ONLY" ctx
         true
 
+let onCompileTrue ctx (trueExpr: TrueExpression) =
+    write "1" ctx
+    true
+
+let onCompileFalse ctx (falseExpr: FalseExpression) =
+    write "0" ctx
+    true
+
 let useRowNumber (ctx: CompilerContext) =
     let ctx = ctx.ExtraContext.Value :?> SqlServerContext
     ctx.RowNumberCtx <- ctx.RowNumberCtx + 1
@@ -65,7 +73,7 @@ let getCurrentRowNumberWrapper (ctx: CompilerContext) =
 ///     SELECT Foo.Bar, Foo.Baa
 /// to
 ///     SELECT Foo.Bar, Foo.Baa, __RowNumber_1
-let convertToSelectRowNumber (select: SelectClause) orderBy (limit: LimitClause) (ctx: CompilerContext) =
+let convertToSelectRowNumber (select: SelectClause) orderBy (ctx: CompilerContext) =
     let rowNumber = RowNumberExpression(orderBy)
     let rowNumber = alias rowNumber (getCurrentRowNumberColumn ctx)
     let cols = Array.append select.Columns [|rowNumber |> ColumnsOperand.Identifier |]
@@ -114,7 +122,7 @@ let convertToWhereRowNumber (limit: LimitClause) (ctx: CompilerContext) =
 /// WHERE [__RowNumber_1] BETWEEN [..] AND [..]
 let convertToRowNumberCTESelectStmt (stmt: SelectStatement) (ctx: CompilerContext) =
     useRowNumber ctx
-    let selectInCte = convertToSelectRowNumber stmt.Select stmt.Order.Value stmt.Limit.Value ctx
+    let selectInCte = convertToSelectRowNumber stmt.Select stmt.Order.Value ctx
     let resultSelect = simplifySelectClause stmt.Select
     stmt.Select <- selectInCte
     let wrapperTable = table (getCurrentRowNumberWrapper ctx)
@@ -197,6 +205,10 @@ let onCompileExpression: SqlServerCompilerOptions -> OnCompileExpression =
             true
         | :? WithClause as x ->
             onCompileWithClause ctx x opt
+        | :? TrueExpression as x ->
+            onCompileTrue ctx x
+        | :? FalseExpression as x ->
+            onCompileFalse ctx x
         | _ -> false
 
 let createDefaultContext (opt) =

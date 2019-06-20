@@ -8,8 +8,6 @@ type SpecialConstants =
     { IdentifierLeft: string
       IdentifierRight: string
       MemberAccessor: string
-      True: string
-      False: string
       StringQuote: string
     }
 

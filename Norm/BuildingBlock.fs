@@ -16,6 +16,8 @@ module BuildingBlock =
         inherit ConstantExpression("TRUE", false)
     type FalseExpression() =
         inherit ConstantExpression("FALSE", false)
+    type NullExpression() =
+        inherit ConstantExpression("NULL", false)
 
     type ParameterExpression(name: string, value: obj) =
         inherit SqlExpression()

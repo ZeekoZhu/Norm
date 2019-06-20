@@ -5,11 +5,9 @@ type CSList<'t> = System.Collections.Generic.List<'t>
 
 
 let defaultConstants =
-    { IdentifierLeft = "["
-      IdentifierRight = "]"
+    { IdentifierLeft = "\""
+      IdentifierRight = "\""
       MemberAccessor = "."
-      True = "TRUE"
-      False = "FALSE"
       StringQuote = "'"
     }
 
