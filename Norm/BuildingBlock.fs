@@ -177,6 +177,27 @@ module BuildingBlock =
     and ExceptExpression(left, right) =
         inherit SetOperationExpression(" EXCEPT ", left, right)
 
+    and CaseExpression (defaultValue: SqlExpression, cases: WhenClause []) =
+        inherit SqlExpression()
+        member val Default = defaultValue with get, set
+        member val Cases = cases with get, set
+
+    and SwitchExpression (testValue: ValueParameter, defaultValue: SqlExpression, cases: SwitchLabelClause []) =
+        inherit SqlExpression()
+        member val TestValue = testValue with get, set
+        member val Default = defaultValue with get, set
+        member val Cases = cases with get, set
+
+    and WhenClause(condition: OperatorExpression, result: SqlExpression) =
+        inherit SqlExpression()
+        member val Condition = condition with get, set
+        member val Result = result with get, set
+    
+    and SwitchLabelClause(value: ValueParameter, result: SqlExpression) =
+        inherit SqlExpression()
+        member val Value = value with get, set
+        member val Result = result with get, set
+
     and FromClause(dataSet: DataSet) =
         inherit SqlExpression()
         member val DataSet = dataSet with get, set

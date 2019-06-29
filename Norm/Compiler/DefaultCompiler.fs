@@ -234,6 +234,34 @@ and compileDelete ctx (delete: DeleteStatement) =
     write " " ctx
     compileOptionClause ctx delete.Where
 
+and compileWhenClause ctx (expr: WhenClause) =
+    write "WHEN " ctx
+    compile ctx expr.Condition
+    write " THEN " ctx
+    compile ctx expr.Result
+
+and compileSwitchLabel ctx (expr: SwitchLabelClause) =
+    write "WHEN " ctx
+    compile ctx expr.Value.Unwarp
+    write " THEN " ctx
+    compile ctx expr.Result
+
+and compileSimpleCase ctx (expr: SwitchExpression) =
+    write "CASE " ctx
+    compile ctx expr.TestValue.Unwarp
+    write " " ctx
+    writeArray " " compileSwitchLabel expr.Cases ctx
+    write " ELSE " ctx
+    compile ctx expr.Default
+    write " END"
+
+and compileSearchedCase ctx (expr: CaseExpression) =
+    write "CASE " ctx
+    writeArray " " compileWhenClause expr.Cases ctx
+    write " ELSE " ctx
+    compile ctx expr.Default
+    write " END"
+
 and compile (ctx: CompilerContext) (expr: SqlExpression) =
     let preventDefault =
         match ctx.OnCompileExpression with
