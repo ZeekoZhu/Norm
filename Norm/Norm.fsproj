@@ -14,5 +14,8 @@
     <Compile Include="Compiler\BaseCompiler.fs" />
     <Compile Include="Compiler\SqlServerCompiler.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="paket.references" />
+  </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

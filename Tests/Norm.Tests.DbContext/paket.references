@@ -1,0 +1,6 @@
+group Test
+Microsoft.EntityFrameworkCore.SqlServer
+Microsoft.EntityFrameworkCore.Sqlite
+Npgsql.EntityFrameworkCore.PostgreSQL
+Pomelo.EntityFrameworkCore.MySql
+Microsoft.EntityFrameworkCore

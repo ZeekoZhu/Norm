@@ -1,0 +1,23 @@
+version: "3"
+services:
+  pgsql:
+    image: postgres:alpine
+    ports:
+      - 25432:5432
+    environment:
+      POSTGRES_PASSWORD: p@55w0rd
+  ms-sql:
+    image: mcr.microsoft.com/mssql/server:2017-latest-ubuntu
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=p@55w0rd
+    ports:
+      - "21433:1433"
+  mysql:
+    image: mysql
+    ports:
+      - 23306:3306
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: p@55w0rd
+

@@ -9,8 +9,14 @@ group Test
     storage: none
     source https://api.nuget.org/v3/index.json
     framework: netstandard2.0, netcoreapp2.2
+    nuget Microsoft.EntityFrameworkCore.Sqlite
+    nuget Microsoft.EntityFrameworkCore.SqlServer
+    nuget Npgsql.EntityFrameworkCore.PostgreSQL
+    nuget Pomelo.EntityFrameworkCore.MySql
+nuget TaskBuilder.fs
     nuget xunit
     nuget xunit.runner.visualstudio
+    nuget FSharp.Core
     nuget FluentAssertions
     nuget Dapper
 // [ FAKE GROUP ]
