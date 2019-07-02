@@ -139,7 +139,15 @@ let set col value =
     AssignmentExpression(col, value |> InternalBuilder.valueExpr)
 let update table mutations = UpdateStatement(table, mutations)
 
-let delete table columns = DeleteStatement(table, columns)
+let delete table = DeleteStatement(table)
+let insert table columns values = InsertStatement(table, columns, values)
+
+/// Builder for ValueParameter
+module SqlValue =
+    let id str = ValueParameter.Identifier (column(str))
+    let constant str isString = ValueParameter.Const (ConstantExpression(str, isString))
+    let param name value = ValueParameter.Param (ParameterExpression(name, value))
+    let computed expr = ValueParameter.Computed expr
 
 type BuilderContext =
     { mutable ParamSeq: int

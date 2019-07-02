@@ -150,6 +150,7 @@ and compileStatement ctx (stmt: SqlStatement) =
     | :? SelectStatement as selectStmt -> compileSelectStatement ctx selectStmt
     | :? UpdateStatement as x -> compileUpdate ctx x
     | :? DeleteStatement as x -> compileDelete ctx x
+    | :? InsertStatement as x -> compileInsert ctx x
     | _ -> failwith "Not supported yet!"
 
 and compileConstant (ctx: CompilerContext) (constExpr: ConstantExpression) =
@@ -233,6 +234,21 @@ and compileDelete ctx (delete: DeleteStatement) =
     compileOptionClause ctx delete.From
     write " " ctx
     compileOptionClause ctx delete.Where
+
+and compileInsertValues ctx (values: ValueParameter[]) =
+    write "(" ctx
+    writeArray ", " compileInvokeParam values ctx
+    write ")" ctx
+
+and compileInsert ctx (insert: InsertStatement) =
+    write "INSERT INTO " ctx
+    compile ctx insert.Table
+    if insert.Columns.Length > 0 then
+        write "( " ctx
+        writeArray ", " compile insert.Columns ctx
+        write " ) " ctx
+    write "VALUES " ctx
+    writeArray ", " compileInsertValues (Array.ofList insert.Values) ctx
 
 and compileWhenClause ctx (expr: WhenClause) =
     write "WHEN " ctx

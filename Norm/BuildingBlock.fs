@@ -40,24 +40,6 @@ module BuildingBlock =
         member val Right = right with get, set
         member val WrapOperand = wrapOperand with get, set
 
-//    type EqualToExpression(left, right) =
-//        inherit BinaryOperatorExpression(" = ", left, right, true)
-//
-//    type NotEqualToExpression(left, right) =
-//        inherit BinaryOperatorExpression(" <> ", left, right, true)
-//
-//    type AndAlsoExpression(left, right) =
-//        inherit BinaryOperatorExpression(" AND ", left, right, true)
-//
-//    type OrElseExpression(left, right) =
-//        inherit BinaryOperatorExpression(" OR ", left, right, true)
-//
-//    type InRangeExpression(left, right) =
-//        inherit BinaryOperatorExpression(" IN ", left, right, true)
-//
-//    type NotInRangeExpression(left, right) =
-//        inherit BinaryOperatorExpression(" NOT IN ", left, right, true)
-
     [<AbstractClass>]
     type IdentifierExpression(name: string) =
         inherit SqlExpression()
@@ -239,9 +221,14 @@ module BuildingBlock =
         member val Where: WhereClause option = None with get, set
         member val From: FromClause option = None with get, set
 
-    type DeleteStatement(table: TableOrColumnExpression, columns: TableOrColumnExpression []) =
+    type DeleteStatement(table: TableOrColumnExpression) =
+        inherit SqlStatement()
+        member val Table = table with get, set
+        member val Where: WhereClause option = None with get, set
+        member val From: FromClause option = None with get, set
+
+    type InsertStatement(table: TableOrColumnExpression, columns: TableOrColumnExpression [], rows: ValueParameter[] list) =
         inherit SqlStatement()
         member val Table = table with get, set
         member val Columns = columns with get, set
-        member val Where: WhereClause option = None with get, set
-        member val From: FromClause option = None with get, set
+        member val Values = rows with get, set
